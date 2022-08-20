@@ -1,0 +1,76 @@
+Sub ReplaceText()
+    Dim MyArray() As String
+    Dim temp As String
+    Dim srch_rng As Range
+    Dim temp_no_num As String
+    Dim X As Long
+    Dim iter As Long
+    ' DEFINING TWO BOOKMARKS TO SPECIFY SEARCH BORDERS
+    Set rngStart = ActiveDocument.Bookmarks("START").Range
+    Set rngEnd = ActiveDocument.Bookmarks("END").Range
+    
+    ' PREVENT UPDATE ON SCREEN FOR SPEED
+    Application.ScreenUpdating = False
+    
+    ' SETTING THE CURSOR AT THE START OF THE DOCUMENT
+    Selection.HomeKey Unit:=wdStory
+    
+    ' SPECIFY THE RANGE BETWEEN THE TWO BOOKMARKS
+    Set srch_rng = ActiveDocument.Range(rngStart.Start, rngEnd.End)
+    
+    With Selection.Find
+        ' SEARCH FOR ALL TEXT BETWEEB SQUARE BRACKETS BETWEEN THE TWO BOOKMARKS
+        Do While .Execute(FindText:="\[*\]", MatchWildcards:=True) And Selection.Range.End < srch_rng.End
+        
+            ' SKIP THE SELECTION OF THE BRACKETS
+            Selection.MoveStart Unit:=wdCharacter, Count:=1
+            Selection.MoveEnd Unit:=wdCharacter, Count:=-1
+            
+            ' EXTRACTING THE CITATION DATA
+            temp = Selection.Text
+            
+            ' THEN REMOVE THE DATA IN THE DOCUMENT
+            Selection.Delete
+            
+            ' VARIABLE TO STORE NON-NUMERIC CHARACTERS BETWEEN THE SQUARE BRACKETS
+            NoDigits = temp
+            For X = 0 To 9
+                NoDigits = Replace(NoDigits, X, "")
+            Next
+            
+            ' REMOVING NON-NUMERIC CHARACTERS FROM STORED DATA AND CONVERT THEM TO SPACES
+            temp = Replace(temp, ",", " ")
+            temp = Replace(temp, "–", " ")
+            ' THIS ARRAY STORES THE REFERENCES NUMBERS
+            MyArray = Split(temp, " ")
+            
+            ' A LOOP TO INSERT CROSS-REFERENCES
+            iter = 1
+            M = UBound(MyArray) - 1
+            For iter = LBound(MyArray) To M
+                ' INSERT REFERENCE NO.
+                Selection.TypeText MyArray(iter)
+                ' SELECT THE REFERENCE AND CROSS LINK
+                Selection.MoveLeft Unit:=wdCharacter, Count:=Len(MyArray(iter)), Extend:=wdExtend
+                Selection.InsertCrossReference ReferenceType:="Numbered item", _
+                ReferenceKind:=wdNumberRelativeContext, ReferenceItem:=MyArray(iter), _
+                InsertAsHyperlink:=True, IncludePosition:=False, SeparateNumbers:=False, _
+                SeparatorString:=" "
+                ' UNSELECT REFERENCE
+                Selection.Collapse
+                ' INSERT THE NON-NUMERIC CHARACTER FROM THE STORED VALUES
+                Selection.TypeText Mid(NoDigits, iter + 1, 1)
+                
+            Next
+            ' WE INSERT THE LAST CROSS-REFERENCE HERE ... SAME CODE AS BEFORE
+            Selection.TypeText MyArray(M + 1)
+            Selection.MoveLeft Unit:=wdCharacter, Count:=Len(MyArray(M + 1)), Extend:=wdExtend
+            Selection.InsertCrossReference ReferenceType:="Numbered item", _
+            ReferenceKind:=wdNumberRelativeContext, ReferenceItem:=MyArray(iter), _
+            InsertAsHyperlink:=True, IncludePosition:=False, SeparateNumbers:=False, _
+            SeparatorString:=" "
+            Selection.Collapse
+        Loop
+    End With
+    Application.ScreenUpdating = True
+End Sub
